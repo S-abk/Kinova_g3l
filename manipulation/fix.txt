@@ -1,0 +1,12 @@
+import sys
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 10:
+    import collections
+    setattr(collections, "MutableMapping", collections.abc.MutableMapping)
+
+
+
+replace all instances of collection.Mutablemapping with:
+collections.abc.Mutablemapping
+
+when prompted with errors in the terminal
