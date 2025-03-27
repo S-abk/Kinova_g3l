@@ -31,8 +31,8 @@ aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
 aruco_params = cv2.aruco.DetectorParameters()
 detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
 
-# Define the physical size of your marker (in meters)
-marker_length = 0.095  #9.5 cm marker
+# Define the physical size of marker (in meters)
+marker_length = 0.04  # 4 cm marker
 
 try:
     while True:
