@@ -179,7 +179,7 @@ class HandEyeCalibrationNode(Node):
 
     def detect_aruco_pose(self, image):
         dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-        parameters = aruco.DetectorParameters_create()
+        parameters = aruco.DetectorParameters()
         corners, ids, _ = aruco.detectMarkers(image, dictionary, parameters=parameters)
         if ids is not None and len(ids) > 0:
             rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
