@@ -1,4 +1,0 @@
-
-replace o'collection. ` with: `collections.abc.`
-
-when prompted with errors in the terminal

@@ -19,7 +19,7 @@ python3 -m pip install kortex_api-2.6.0.post3-py3-none-any.whl
 Recommended python 3.10 (in a virtual environment):
 
 ```bash
-#create a virtual environment called ".venv"
+#creating a virtual environment called ".venv"
 python3 -m venv .venv
 ```
 
