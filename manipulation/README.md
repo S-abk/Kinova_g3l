@@ -10,3 +10,8 @@ Then, install it using the following command:
 ```bash
 python3 -m pip install <whl relative fullpath name>.whl
 ```
+e.g:
+
+```bash
+python3 -m pip install kortex_api-2.6.0.post3-py3-none-any.whl
+```
