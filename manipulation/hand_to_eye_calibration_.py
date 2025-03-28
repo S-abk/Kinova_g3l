@@ -292,6 +292,13 @@ class HandEyeCalibrationNode(Node):
         X[:3, 3] = X_trans.flatten()
         self.get_logger().info("Hand-Eye Calibration (X): " + str(X))
 
+    def set_servoing_mode(self):
+        servo_mode = Base_pb2.ServoingModeInformation()
+        servo_mode.servoing_mode = Base_pb2.SINGLE_LEVEL_SERVOING
+        self.base.SetServoingMode(servo_mode)
+        self.get_logger().info("Servoing mode set to SINGLE_LEVEL_SERVOING.")
+
+
     def close_gripper(self):
         """
         Closes the gripper using the Kinova API.
@@ -320,6 +327,7 @@ def main(args=None):
         node = HandEyeCalibrationNode(base)
         
         # Close gripper to secure the attached tag.
+        node.set_servoing_mode()
         node.close_gripper()
         print("Place the ArUco marker at the desired offset from the gripper.")
         input("After positioning the marker, press Enter to begin waypoint navigation...")
