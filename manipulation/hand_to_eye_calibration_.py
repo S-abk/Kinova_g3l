@@ -295,6 +295,10 @@ class HandEyeCalibrationNode(Node):
         # Save the calibration result to a file.
         np.savetxt("calibration_matrix.txt", X, fmt="%.6f", delimiter=",", header="Calibration Matrix (Transform from End-Effector to Camera)")
         self.get_logger().info("Calibration matrix written to calibration_matrix.txt")
+        self.get_logger().info("Calibration completed. Check the file for results.")
+        self.get_logger().info("Calibration complete. Shutting down node.")
+        self.timer.cancel()
+        rclpy.shutdown()
 
     def set_servoing_mode(self):
         servo_mode = Base_pb2.ServoingModeInformation()
