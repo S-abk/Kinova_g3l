@@ -700,7 +700,7 @@ def main():
         # success &= example_manual_trajectory(base, base_cyclic)
         
         # Execute the original trajectory demo (if desired)
-        # success &= example_trajectory(base, base_cyclic)
+        success &= example_trajectory(base, base_cyclic)
         
         # Execute the new circular trajectory demo
         # success &= example_circular_trajectory(base, base_cyclic)
