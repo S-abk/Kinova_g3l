@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
 
 # Generate a marker
-marker_id = 42
-marker_size = 200  # Size in pixels
+marker_id = 42 
+marker_size = 200  # Size in pixels 
 marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
 
 cv2.imwrite('marker_42.png', marker_image)
