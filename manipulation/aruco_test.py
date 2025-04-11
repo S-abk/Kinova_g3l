@@ -19,8 +19,8 @@ align_to = rs.stream.color
 align = rs.align(align_to)
 
 # --- Load ArUco Dictionary and Parameters ---
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
-aruco_params = cv2.aruco.DetectorParameters_create()
+aruco_dict = cv2.aruco.Dictionary(cv2.aruco.DICT_6X6_250,_markerSize=40) # size of the marker in mm = 6
+aruco_params = cv2.aruco.DetectorParameters()
 
 try:
     while True:
