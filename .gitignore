@@ -1,3 +1,14 @@
 .venv/
 manipulation/hand_to_eye_calibration.py
+manipulation/pick_and_scoop.py
+manipulation/__pycache__/
+test.pem
+.env
+manipulation/hand_to_eye_calibration_.py
+manipulation/eye_to_base_to_hand.py
+manipulation/eye_to_base_Kalman.py
+manipulation/hand_to_eye_calibration.py
+manipulation/pick_*
+manipulation/test_API.py
+manipulation/eye_to_base_Kalman.py
 manipulation/__pycache__/
