@@ -23,7 +23,7 @@ API_ID = os.getenv('API_ID')
 from kortex_api.autogen.client_stubs.BaseClientRpc import BaseClient
 from kortex_api.autogen.messages import Base_pb2, BaseCyclic_pb2, Common_pb2
 
-ROBOT_NUMBER = 1 # Or set as appropriate
+ROBOT_NUMBER = 1 # set as appropriate
 API_URL = 'https://roboticsensingproject.org:4001/api/submitRobotStatus'
 FULLCHAIN_PATH = './test.pem'
 CA_PATH = './test.pem' # Path to CA cert for WSS verification
@@ -72,11 +72,11 @@ PLACE_TARGETS = {
     },
 }
 
-# --- SELECT WHICH TARGET TO USE FOR THIS RUN ---
+# --- SELECT WHICH TARGET TO USE FOR DFAULT RUN ---
 DEFAULT_PLACE_TARGET_KEY = "pot2"
 # ---
 
-# Known transform for the base marker (ID 8)
+# Known transform for the base marker from Robot base frame (ID 8)
 T_base_marker = np.array([
     [1, 0, 0, -0.09],
     [0, 1, 0,  0.0],
@@ -99,7 +99,7 @@ class KalmanFilter6D:
         self.Q = np.diag([pos_process_noise]*3 + [vel_process_noise]*3)
         self.H = np.hstack((np.eye(3), np.zeros((3, 3))))
         self.R_pose = np.eye(3) * (0.015**2) # standard deviation of 1.5cm for pose measurement from aruco 
-        self.R_depth = np.eye(3) * (0.01**2) # standard deviation of 7cm for depth measurement from depth camera
+        self.R_depth = np.eye(3) * (0.01**2) # standard deviation of 1cm for depth measurement from depth camera
     def predict(self, dt):
         self.A[0, 3] = dt; self.A[1, 4] = dt; self.A[2, 5] = dt
         if not np.all(np.isfinite(self.x)):
@@ -122,7 +122,7 @@ class KalmanFilter6D:
             self.x = self.x + K @ y
             self.P = (np.eye(6) - K @ self.H) @ self.P
             self.P = (self.P + self.P.T) / 2.0
-            # Optional divergence checks...
+            # divergence checks...
         except np.linalg.LinAlgError: pass # print("Warning: Singular matrix S...")
         except Exception as e: print(f"Error during Kalman update: {e}")
 
@@ -159,17 +159,53 @@ def check_for_end_or_abort(e): # ...
         if(notification.action_event==Base_pb2.ACTION_END or notification.action_event==Base_pb2.ACTION_ABORT): e.set()
     return check
 def populateCartesianCoordinate(waypointInformation): # ...
-    waypoint=Base_pb2.CartesianWaypoint();waypoint.pose.x=waypointInformation[0];waypoint.pose.y=waypointInformation[1];waypoint.pose.z=waypointInformation[2];waypoint.pose.theta_x=waypointInformation[3];waypoint.pose.theta_y=waypointInformation[4];waypoint.pose.theta_z=waypointInformation[5];waypoint.blending_radius=waypointInformation[6];waypoint.reference_frame=Base_pb2.CARTESIAN_REFERENCE_FRAME_BASE;return waypoint
+    waypoint=Base_pb2.CartesianWaypoint()
+    waypoint.pose.x=waypointInformation[0]
+    waypoint.pose.y=waypointInformation[1]
+    waypoint.pose.z=waypointInformation[2]
+    waypoint.pose.theta_x=waypointInformation[3]
+    waypoint.pose.theta_y=waypointInformation[4]
+    waypoint.pose.theta_z=waypointInformation[5]
+    waypoint.blending_radius=waypointInformation[6]
+    waypoint.reference_frame=Base_pb2.CARTESIAN_REFERENCE_FRAME_BASE
+    return waypoint
 def open_gripper(base): # ...
-    gripper_command=Base_pb2.GripperCommand();finger=gripper_command.gripper.finger.add();gripper_command.mode=Base_pb2.GRIPPER_POSITION;finger.finger_identifier=1;finger.value=0.0;print("Opening gripper...");base.SendGripperCommand(gripper_command);time.sleep(1.5)
+    gripper_command=Base_pb2.GripperCommand()
+    finger=gripper_command.gripper.finger.add()
+    gripper_command.mode=Base_pb2.GRIPPER_POSITION;
+    finger.finger_identifier=1;finger.value=0.0
+    print("Opening gripper...")
+    base.SendGripperCommand(gripper_command)
+    time.sleep(1.5)
 def close_gripper(base): # ...
-    gripper_command=Base_pb2.GripperCommand();finger=gripper_command.gripper.finger.add();gripper_command.mode=Base_pb2.GRIPPER_POSITION;finger.finger_identifier=1;finger.value=0.7;print("Closing gripper...");base.SendGripperCommand(gripper_command);time.sleep(1.5)
+    gripper_command=Base_pb2.GripperCommand()
+    finger=gripper_command.gripper.finger.add()
+    gripper_command.mode=Base_pb2.GRIPPER_POSITION
+    finger.finger_identifier=1
+    finger.value=0.7
+    print("Closing gripper...")
+    base.SendGripperCommand(gripper_command)
+    time.sleep(1.5)
 def example_move_to_home_position(base): # ...
-    base_servo_mode=Base_pb2.ServoingModeInformation();base_servo_mode.servoing_mode=Base_pb2.SINGLE_LEVEL_SERVOING;base.SetServoingMode(base_servo_mode);print("Moving the arm to Home position...");action_type=Base_pb2.RequestedActionType();action_type.action_type=Base_pb2.REACH_JOINT_ANGLES;action_list=base.ReadAllActions(action_type);action_handle=None;
+    base_servo_mode=Base_pb2.ServoingModeInformation()
+    base_servo_mode.servoing_mode=Base_pb2.SINGLE_LEVEL_SERVOING
+    base.SetServoingMode(base_servo_mode)
+    print("Moving the arm to Home position...")
+    action_type=Base_pb2.RequestedActionType()
+    action_type.action_type=Base_pb2.REACH_JOINT_ANGLES
+    action_list=base.ReadAllActions(action_type)
+    action_handle=None;
     for action in action_list.action_list:
-        if action.name=="Home": action_handle=action.handle; break
+        if action.name=="Home": 
+            action_handle=action.handle
+            break
     if action_handle is None: return False
-    e=threading.Event();notification_handle=base.OnNotificationActionTopic(check_for_end_or_abort(e),Base_pb2.NotificationOptions());base.ExecuteActionFromReference(action_handle);finished=e.wait(TIMEOUT_DURATION);base.Unsubscribe(notification_handle);print("Home position reached."if finished else "Timeout waiting for Home position.");return finished
+    e=threading.Event()
+    notification_handle=base.OnNotificationActionTopic(check_for_end_or_abort(e),Base_pb2.NotificationOptions())
+    base.ExecuteActionFromReference(action_handle)
+    finished=e.wait(TIMEOUT_DURATION);base.Unsubscribe(notification_handle)
+    print("Home position reached."if finished else "Timeout waiting for Home position.")
+    return finished
 
 
 
@@ -246,12 +282,13 @@ def status_reporting_worker(stop_event, shared_status_list, start_time):
 #######################################
 # Camera & Detection Functions
 #######################################
-# MODIFIED SIGNATURE: Added place_marker_id
+# Added place_marker_id
+
 def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, pick_marker_id, place_marker_id, T_base_marker_known, filter_duration_sec):
     pipeline = None
     T_base_camera = None
     detected_markers_camera_raw = None
-    # --- MODIFIED: Dictionary to hold filtered positions ---
+    # Dictionary to hold filtered positions ---
     filtered_positions_base = {} # Will store {marker_id: filtered_position}
 
     # --- Kalman Filters (one for pick, one for place) ---
