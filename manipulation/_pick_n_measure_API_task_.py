@@ -282,7 +282,6 @@ def status_reporting_worker(stop_event, shared_status_list, start_time):
 #######################################
 # Camera & Detection Functions
 #######################################
-# Added place_marker_id
 
 def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, pick_marker_id, place_marker_id, T_base_marker_known, filter_duration_sec):
     pipeline = None
@@ -299,7 +298,7 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
 
     print("--- Detection Phase 1: Initial Scan ---")
     try:
-        # --- Setup RealSense, ArUco detector (Keep as before) ---
+        # --- Setup RealSense, ArUco detector ---
         pipeline = rs.pipeline()
         config = rs.config()
         config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
@@ -451,7 +450,12 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
                         marker_corners=corners_f[idx].reshape((4,2));center_x=int(np.mean(marker_corners[:,0]));center_y=int(np.mean(marker_corners[:,1]))
                         if 0<=center_x<intrinsics.width and 0<=center_y<intrinsics.height:
                              depth_value=depth_frame_f.get_distance(center_x,center_y)
-                             if depth_value>0.1:x_cam=(center_x-intrinsics.ppx)*depth_value/intrinsics.fx;y_cam=(center_y-intrinsics.ppy)*depth_value/intrinsics.fy;point_cam=np.array([x_cam,y_cam,depth_value,1.0],dtype=np.float32);point_base=T_base_camera_f@point_cam;measurement_pick_depth=point_base[:3]
+                             if depth_value>0.1:
+                                 x_cam=(center_x-intrinsics.ppx)*depth_value/intrinsics.fx
+                                 y_cam=(center_y-intrinsics.ppy)*depth_value/intrinsics.fy
+                                 point_cam=np.array([x_cam,y_cam,depth_value,1.0],dtype=np.float32)
+                                 point_base=T_base_camera_f@point_cam
+                                 measurement_pick_depth=point_base[:3]
 
                     # Get measurements for PLACE marker
                     place_idx = np.where(ids_f.flatten() == place_marker_id)[0]
@@ -466,7 +470,12 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
                         marker_corners=corners_f[idx].reshape((4,2));center_x=int(np.mean(marker_corners[:,0]));center_y=int(np.mean(marker_corners[:,1]))
                         if 0<=center_x<intrinsics.width and 0<=center_y<intrinsics.height:
                              depth_value=depth_frame_f.get_distance(center_x,center_y)
-                             if depth_value>0.1:x_cam=(center_x-intrinsics.ppx)*depth_value/intrinsics.fx;y_cam=(center_y-intrinsics.ppy)*depth_value/intrinsics.fy;point_cam=np.array([x_cam,y_cam,depth_value,1.0],dtype=np.float32);point_base=T_base_camera_f@point_cam;measurement_place_depth=point_base[:3]
+                             if depth_value>0.1:
+                                 x_cam=(center_x-intrinsics.ppx)*depth_value/intrinsics.fx
+                                 y_cam=(center_y-intrinsics.ppy)*depth_value/intrinsics.fy
+                                 point_cam=np.array([x_cam,y_cam,depth_value,1.0],dtype=np.float32)
+                                 point_base=T_base_camera_f@point_cam
+                                 measurement_place_depth=point_base[:3]
 
 
                 # --- Kalman Filter Update ---
@@ -474,20 +483,25 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
                 dt = current_filter_time - prev_filter_time
                 prev_filter_time = current_filter_time
 
+                
                 if dt > 0:
                     # Update Pick Filter
                     if kf_pick:
                         kf_pick.predict(dt)
-                        if measurement_pick_pose is not None: kf_pick.update(measurement_pick_pose, kf_pick.R_pose)
-                        if measurement_pick_depth is not None: kf_pick.update(measurement_pick_depth, kf_pick.R_depth)
+                        if measurement_pick_pose is not None: 
+                            kf_pick.update(measurement_pick_pose, kf_pick.R_pose)
+                        if measurement_pick_depth is not None:
+                            kf_pick.update(measurement_pick_depth, kf_pick.R_depth)
                         # Store potentially updated filtered position
                         filtered_positions_base[pick_marker_id] = kf_pick.x[:3, 0].copy()
 
                     # Update Place Filter
                     if kf_place:
                         kf_place.predict(dt)
-                        if measurement_place_pose is not None: kf_place.update(measurement_place_pose, kf_place.R_pose)
-                        if measurement_place_depth is not None: kf_place.update(measurement_place_depth, kf_place.R_depth)
+                        if measurement_place_pose is not None: 
+                            kf_place.update(measurement_place_pose, kf_place.R_pose)
+                        if measurement_place_depth is not None: 
+                            kf_place.update(measurement_place_depth, kf_place.R_depth)
                         # Store potentially updated filtered position
                         filtered_positions_base[place_marker_id] = kf_place.x[:3, 0].copy()
 
@@ -497,9 +511,14 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
                 pick_pose_str = f"P{pick_marker_id} Pose: N/A"
                 pick_depth_str = f"P{pick_marker_id} Depth: N/A"
                 pick_fused_str = f"P{pick_marker_id} Fused: N/A"
-                if measurement_pick_pose is not None: pick_pose_str = f"P{pick_marker_id} Pose: {measurement_pick_pose[0]:.3f},{measurement_pick_pose[1]:.3f},{measurement_pick_pose[2]:.3f}"
-                if measurement_pick_depth is not None: pick_depth_str = f"P{pick_marker_id} Depth:{measurement_pick_depth[0]:.3f},{measurement_pick_depth[1]:.3f},{measurement_pick_depth[2]:.3f}"
-                if pick_marker_id in filtered_positions_base: pick_fused_str = f"P{pick_marker_id} Fused:{filtered_positions_base[pick_marker_id][0]:.4f},{filtered_positions_base[pick_marker_id][1]:.4f},{filtered_positions_base[pick_marker_id][2]:.4f}"
+                
+                if measurement_pick_pose is not None: 
+                    pick_pose_str = f"P{pick_marker_id} Pose: {measurement_pick_pose[0]:.3f},{measurement_pick_pose[1]:.3f},{measurement_pick_pose[2]:.3f}"
+                if measurement_pick_depth is not None: 
+                    pick_depth_str = f"P{pick_marker_id} Depth:{measurement_pick_depth[0]:.3f},{measurement_pick_depth[1]:.3f},{measurement_pick_depth[2]:.3f}"
+                if pick_marker_id in filtered_positions_base: 
+                    pick_fused_str = f"P{pick_marker_id} Fused:{filtered_positions_base[pick_marker_id][0]:.4f},{filtered_positions_base[pick_marker_id][1]:.4f},{filtered_positions_base[pick_marker_id][2]:.4f}"
+                    
                 cv2.putText(color_image_f, pick_pose_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 cv2.putText(color_image_f, pick_depth_str,(10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 100, 0), 1)
                 cv2.putText(color_image_f, pick_fused_str,(10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
@@ -508,9 +527,14 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
                 place_pose_str = f"P{place_marker_id} Pose: N/A"
                 place_depth_str = f"P{place_marker_id} Depth: N/A"
                 place_fused_str = f"P{place_marker_id} Fused: N/A"
-                if measurement_place_pose is not None: place_pose_str = f"P{place_marker_id} Pose: {measurement_place_pose[0]:.3f},{measurement_place_pose[1]:.3f},{measurement_place_pose[2]:.3f}"
-                if measurement_place_depth is not None: place_depth_str = f"P{place_marker_id} Depth:{measurement_place_depth[0]:.3f},{measurement_place_depth[1]:.3f},{measurement_place_depth[2]:.3f}"
-                if place_marker_id in filtered_positions_base: place_fused_str = f"P{place_marker_id} Fused:{filtered_positions_base[place_marker_id][0]:.4f},{filtered_positions_base[place_marker_id][1]:.4f},{filtered_positions_base[place_marker_id][2]:.4f}"
+                
+                if measurement_place_pose is not None: 
+                    place_pose_str = f"P{place_marker_id} Pose: {measurement_place_pose[0]:.3f},{measurement_place_pose[1]:.3f},{measurement_place_pose[2]:.3f}"
+                if measurement_place_depth is not None: 
+                    place_depth_str = f"P{place_marker_id} Depth:{measurement_place_depth[0]:.3f},{measurement_place_depth[1]:.3f},{measurement_place_depth[2]:.3f}"
+                if place_marker_id in filtered_positions_base: 
+                    place_fused_str = f"P{place_marker_id} Fused:{filtered_positions_base[place_marker_id][0]:.4f},{filtered_positions_base[place_marker_id][1]:.4f},{filtered_positions_base[place_marker_id][2]:.4f}"
+                    
                 cv2.putText(color_image_f, place_pose_str, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 cv2.putText(color_image_f, place_depth_str,(10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 100, 0), 1)
                 cv2.putText(color_image_f, place_fused_str,(10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
@@ -551,7 +575,6 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
         cv2.destroyAllWindows()
         print("Detection windows closed.")
 
-    # --- MODIFIED RETURN VALUE ---
     # Return camera pose, raw poses, and the dictionary of filtered positions
     return T_base_camera, detected_markers_camera_raw, filtered_positions_base
 
@@ -561,7 +584,7 @@ def detect_markers_and_filter(marker_size, required_marker_ids, base_marker_id, 
 #######################################
 # LOGIC: Uses Base Frame Offsets relative to Filtered Position
 
-def calculate_target_pose_in_base(ref_marker_id, base_frame_offset_dict, # Changed name for clarity
+def calculate_target_pose_in_base(ref_marker_id, base_frame_offset_dict,
                                   target_orientation_base_dict,
                                   T_base_camera, # Still potentially useful for context/debug, but not directly used if filter works
                                   detected_markers_camera_raw, # Still potentially useful for context/debug
@@ -605,7 +628,7 @@ def calculate_target_pose_in_base(ref_marker_id, base_frame_offset_dict, # Chang
 
     return T_base_target
 
-def move_to_pose_relative_to_marker(base, ref_marker_id, position_offset_dict, # Name might be slightly misleading now, but keep for consistency or rename
+def move_to_pose_relative_to_marker(base, ref_marker_id, position_offset_dict,
                                      target_orientation_base_dict,
                                      T_base_camera, detected_markers_camera_raw,
                                      filtered_positions_dict=None,
@@ -621,7 +644,7 @@ def move_to_pose_relative_to_marker(base, ref_marker_id, position_offset_dict, #
         print("Move failed: Could not calculate target pose.")
         return False
 
-    # --- Execute Move (Keep existing Kortex API logic) ---
+    # --- Execute Move ---
     try:
         x, y, z, theta_x, theta_y, theta_z = decompose_transform(T_base_target)
         print(f"Target Base Coords: x={x:.4f}, y={y:.4f}, z={z:.4f}, tx={theta_x:.1f}, ty={theta_y:.1f}, tz={theta_z:.1f}")
@@ -629,14 +652,14 @@ def move_to_pose_relative_to_marker(base, ref_marker_id, position_offset_dict, #
         waypoint_info = (x, y, z, theta_x, theta_y, theta_z, blending_radius)
         waypoints = Base_pb2.WaypointList()
         waypoints.duration = 0.0 # As fast as possible
-        waypoints.use_optimal_blending = False # Or True if needed/supported
+        waypoints.use_optimal_blending = False # Keep to avoid potential collisions due to curved paths
 
         waypoint = waypoints.waypoints.add()
         waypoint.name = f"move_rel_marker_{ref_marker_id}_filt_check" # Waypoint name
         # Populate the cartesian waypoint part
         waypoint.cartesian_waypoint.CopyFrom(populateCartesianCoordinate(waypoint_info))
 
-        # Validate trajectory (optional but recommended)
+        # Validate trajectory
         result = base.ValidateWaypointList(waypoints)
         if len(result.trajectory_error_report.trajectory_error_elements) != 0:
             print("FATAL: Trajectory validation failed:")
@@ -650,7 +673,7 @@ def move_to_pose_relative_to_marker(base, ref_marker_id, position_offset_dict, #
             Base_pb2.NotificationOptions()
         )
 
-        # print("Executing trajectory...") # Optional print
+        # print("Executing trajectory...")
         base.ExecuteWaypointTrajectory(waypoints)
 
         # Wait for action completion
@@ -666,11 +689,11 @@ def move_to_pose_relative_to_marker(base, ref_marker_id, position_offset_dict, #
         return False
 
 
-# --- WebSocket Callback Functions (Adapted from websocket_script) ---
+# --- WebSocket Callback Functions ---
 # Global or passed-in state needed for callbacks
 shared_state = {
     "target_key": DEFAULT_PLACE_TARGET_KEY,
-    "command": None, # e.g., "START_SEQUENCE", "STOP"
+    "command": None, # "START_SEQUENCE", "STOP" ,...
     "stop_requested": False, # Flag to signal main loop/threads to stop
     # Add other state info as needed
 }
@@ -683,8 +706,8 @@ def on_message(ws, message):
         print(f"WebSocket Received: {data}") # Log received message
 
         # Get command type and task details from the received data object
-        command_type = data.get("type") # E.g., "startTask", "stopTask"
-        task_key = data.get("task")     # E.g., "pot1", "pot2" (only relevant for startTask)
+        command_type = data.get("type") # "startTask", "stopTask", ...
+        task_key = data.get("task")     # "pot1", "pot2", ... (only relevant for startTask)
 
         if command_type == "startTask":
             if task_key: # Ensure a task key was provided
@@ -705,7 +728,7 @@ def on_message(ws, message):
                 shared_state["stop_requested"] = True # Signal threads/loops to stop
                 shared_state["command"] = "STOP"      # Update command state
 
-        # --- Add handling for other potential command types if needed ---
+        # --- Handling for other potential command types if needed ---
         # elif command_type == "pauseTask":
         #     # (Add logic for pausing if implemented)
         #     print("WebSocket: pauseTask received (not implemented yet).")
@@ -911,14 +934,17 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
         print("\n--- Sequence: Starting Pick ---")
         current_local_status = "Sequence: Pick Approach"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_APPROACH_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Pick approach failed")
+        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_APPROACH_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Pick approach failed")
 
         with state_lock:
-             if shared_state["stop_requested"]: raise InterruptedError("Stop requested during pick")
+             if shared_state["stop_requested"]: 
+                 raise InterruptedError("Stop requested during pick")
 
         current_local_status = "Sequence: Pick Descend"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_GRASP_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Pick descend failed")
+        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_GRASP_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Pick descend failed")
 
         current_local_status = "Sequence: Pick Grasping"
         shared_status_list[0] = current_local_status
@@ -927,31 +953,37 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
 
         current_local_status = "Sequence: Pick Ascend"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_LIFT_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Pick ascend failed")
+        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_LIFT_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Pick ascend failed")
         print("--- Sequence: Pick Complete ---")
 
         with state_lock:
-             if shared_state["stop_requested"]: raise InterruptedError("Stop requested after pick")
+             if shared_state["stop_requested"]: 
+                 raise InterruptedError("Stop requested after pick")
 
         # --- 8. Home (Holding) ---
         current_local_status = "Sequence: Homing (Holding)"
         shared_status_list[0] = current_local_status
         print("\n--- Sequence: Homing (Object Held) ---")
-        if not example_move_to_home_position(base): raise RuntimeError("Homing after pick failed")
+        if not example_move_to_home_position(base): 
+            raise RuntimeError("Homing after pick failed")
         time.sleep(1.0)
 
         # --- 9-12. Place Sequence ---
         print(f"\n--- Sequence: Starting Place (Target: {target_key}) ---")
         current_local_status = f"Sequence: Place Approach M:{local_place_marker_id}"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, local_place_marker_id, local_place_approach_offset, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Place approach failed")
+        if not move_to_pose_relative_to_marker(base, local_place_marker_id, local_place_approach_offset, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Place approach failed")
 
         with state_lock:
-             if shared_state["stop_requested"]: raise InterruptedError("Stop requested during place")
+             if shared_state["stop_requested"]: 
+                 raise InterruptedError("Stop requested during place")
 
         current_local_status = f"Sequence: Place Descend M:{local_place_marker_id}"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, local_place_marker_id, local_place_hold_offset, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Place descend failed")
+        if not move_to_pose_relative_to_marker(base, local_place_marker_id, local_place_hold_offset, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Place descend failed")
 
         current_local_status = f"Sequence: Place Holding M:{local_place_marker_id}"
         shared_status_list[0] = current_local_status
@@ -966,7 +998,8 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
 
         current_local_status = f"Sequence: Place Ascend M:{local_place_marker_id}"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, local_place_marker_id, local_place_approach_offset, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Place ascend failed")
+        if not move_to_pose_relative_to_marker(base, local_place_marker_id, local_place_approach_offset, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Place ascend failed")
         print("--- Sequence: Place Complete ---")
 
         with state_lock:
@@ -976,24 +1009,29 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
         current_local_status = "Sequence: Homing (Holding)"
         shared_status_list[0] = current_local_status
         print("\n--- Sequence: Homing (Object Held) ---")
-        if not example_move_to_home_position(base): raise RuntimeError("Homing after place failed")
+        if not example_move_to_home_position(base): 
+            raise RuntimeError("Homing after place failed")
 
         # --- 14-16. Return Sequence ---
         print("\n--- Sequence: Starting Return ---")
         current_local_status = "Sequence: Return to Original Pos"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_LIFT_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Return move failed")
+        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_LIFT_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Return move failed")
 
         with state_lock:
-             if shared_state["stop_requested"]: raise InterruptedError("Stop requested during return")
+             if shared_state["stop_requested"]: 
+                 raise InterruptedError("Stop requested during return")
 
         current_local_status = "Sequence: Return Descending"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_GRASP_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Return ascend failed")
+        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_GRASP_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Return ascend failed")
         print("--- Sequence: Return Complete ---")
         
         with state_lock:
-             if shared_state["stop_requested"]: raise InterruptedError("Stop requested during return")
+             if shared_state["stop_requested"]: 
+                 raise InterruptedError("Stop requested during return")
 
         current_local_status = "Sequence: Return Releasing"
         shared_status_list[0] = current_local_status
@@ -1003,7 +1041,8 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
 
         current_local_status = "Sequence: Return Ascending"
         shared_status_list[0] = current_local_status
-        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_APPROACH_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): raise RuntimeError("Return ascend failed")
+        if not move_to_pose_relative_to_marker(base, PICK_MARKER_ID, PICK_APPROACH_POS_OFFSET, TARGET_ORIENTATION_BASE, local_T_base_camera, local_detected_raw, local_filtered_pos): 
+            raise RuntimeError("Return ascend failed")
         print("--- Sequence: Return Complete ---")
 
         # --- 17. Final Home ---
@@ -1025,7 +1064,7 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
              if base:
                   print("Attempting to home after interruption...")
                   # Might need to ensure gripper is open first depending on state
-                  # open_gripper(base) # If needed
+                  # open_gripper(base) # If needed, avoided to keep object from dropping
                   example_move_to_home_position(base)
         except Exception as home_e:
              print(f"Error during homing after interruption: {home_e}")
@@ -1048,7 +1087,7 @@ def run_pick_place_return_sequence(base, target_key, shared_status_list, state_l
 
 
 
-# --- NEW Main Function (Runs WS in Main Thread) ---
+# --- Main Function (Runs WS in Main Thread) ---
 def main():
     global shared_state, state_lock # Allow access
 
@@ -1149,7 +1188,7 @@ def main():
     return 0
 
 
-# --- Standard script execution block ---
+# --- Script execution block ---
 if __name__ == "__main__":
     main_exit_code = main()
     # Ensure rel event loop is stopped if main exits prematurely
